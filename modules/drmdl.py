@@ -25,8 +25,7 @@ basicConfig(
               StreamHandler()],
     level=INFO)
 
-@bot.on_message(filters.command(["drm"]))
-async def account_login(bot: Client, m: Message):
+async def drm(bot: ace, m: Message):
 
 os.makedirs("Videos/", exist_ok=True)
 
