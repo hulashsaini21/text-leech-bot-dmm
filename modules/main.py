@@ -159,8 +159,120 @@ async def account_login(bot: Client, m: Message):
                         text = await resp.text()
                         url = re.search(r"(https://.*?playlist.m3u8.*?)\"", text).group(1)
 
-            elif 'videos.classplusapp' in url:
+            elif 'videos.classplusapp' or 'cpvod.testbook' in url:
              url = requests.get(f'https://api.classplusapp.com/cams/uploader/video/jw-signed-url?url={url}', headers={'x-access-token': 'eyJjb3Vyc2VJZCI6IjQ1NjY4NyIsInR1dG9ySWQiOm51bGwsIm9yZ0lkIjo0ODA2MTksImNhdGVnb3J5SWQiOm51bGx9'}).json()['url']
+
+            def __init__(self, name: str, resl: str, mpd: str):
+        super().__init__()
+        self.mpd_link = mpd
+        self.name = self.c_name(name)
+        self.vid_format = f'bestvideo.{resl}/bestvideo.2/bestvideo'
+
+        videos_dir = "Videos"
+        encrypted_basename = f"{self.name}_enc"
+        decrypted_basename = f"{self.name}_dec"
+
+        self.encrypted_video = join(videos_dir, f"{encrypted_basename}.mp4")
+        self.encrypted_audio = join(videos_dir, f"{encrypted_basename}.m4a")
+        self.decrypted_video = join(videos_dir, f"{decrypted_basename}.mp4")
+        self.decrypted_audio = join(videos_dir, f"{decrypted_basename}.m4a")
+        self.merged = join(videos_dir, f"{self.name} - {self.get_date()}.mkv")
+
+    async def process_video(self):
+        key = await self.get_keys()
+        if not key:
+            LOGGER.error("Could not retrieve decryption keys.")
+            return
+        LOGGER.info(f"MPD: {self.mpd_link}")
+        LOGGER.info(f"Got the Keys > {key}")
+        LOGGER.info(f"Downloading Started...")
+        if await self.__yt_dlp_drm() and await self.__decrypt(
+                key) and await self.__merge():
+            LOGGER.info(f"Cleaning up files for: {self.name}")
+            await self.__cleanup_files()
+            LOGGER.info(f"Downloading complete for: {self.name}")
+            return self.merged
+        LOGGER.error(f"Processing failed for: {self.name}")
+        return None
+
+    async def __subprocess_call(self, cmd: Union[str, List[str]]):
+        if isinstance(cmd, str):
+            cmd = shlex.split(cmd)
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE)
+        stdout, stderr = await process.communicate()
+        if process.returncode != 0:
+            LOGGER.error(
+                f"Command failed: {' '.join(cmd)}\nError: {stderr.decode()}")
+            return False
+        return True
+
+    async def __yt_dlp_drm(self) -> bool:
+        video_download = self.__subprocess_call(
+            f'yt-dlp -k --allow-unplayable-formats -f "{self.vid_format}" --fixup never "{self.mpd_link}" --external-downloader aria2c --external-downloader-args "-x 16 -s 16 -k 1M" -o "{self.encrypted_video}"'
+        )
+        audio_download = self.__subprocess_call(
+            f'yt-dlp -k --allow-unplayable-formats -f ba --fixup never "{self.mpd_link}" --external-downloader aria2c --external-downloader-args "-x 16 -s 16 -k 1M" -o "{self.encrypted_audio}"'
+        )
+        return await asyncio.gather(video_download, audio_download)
+
+    async def __decrypt(self, key: str):
+        LOGGER.info("Decrypting...")
+        video_decrypt = self.__subprocess_call(
+            f'mp4decrypt --show-progress {key} "{self.encrypted_video}" "{self.decrypted_video}"'
+        )
+        audio_decrypt = self.__subprocess_call(
+            f'mp4decrypt --show-progress {key} "{self.encrypted_audio}" "{self.decrypted_audio}"'
+        )
+        return await asyncio.gather(video_decrypt, audio_decrypt)
+
+    async def __merge(self):
+        LOGGER.info("Merging...")
+        return await self.__subprocess_call(
+            f'ffmpeg -i "{self.decrypted_video}" -i "{self.decrypted_audio}" -c copy "{self.merged}"'
+        )
+
+    async def __cleanup_files(self):
+        for file_path in [
+                self.encrypted_video, self.encrypted_audio,
+                self.decrypted_audio, self.decrypted_video
+        ]:
+            try:
+                await remove(file_path)
+            except Exception as e:
+                LOGGER.warning(f"Failed to delete {file_path}: {str(e)}")
+
+
+async def main(name, resl, mpd):
+    downloader = Download(name, resl, mpd)
+    await downloader.process_video()
+
+
+if __name__ == "__main__":
+    print_ascii_art()
+    parser = argparse.ArgumentParser(
+        description='Download and Decrypt DRM Video via Remote Key API')
+    parser.add_argument('-l',
+                        '--link',
+                        type=str,
+                        help='Valid MPD Link',
+                        required=True)
+    parser.add_argument('-r',
+                        '--resl',
+                        type=str,
+                        help=
+                        'Video Resolution (1/2/3) where 1 is highest and 3 is lowest available resolution',
+                        default="1")
+    parser.add_argument('-o',
+                        '--name',
+                        type=str,
+                        help='Custom name for the output file',
+                        default="output")
+    args = parser.parse_args()
+    asyncio.run(
+        main(name=args.name, resl=args.resl, mpd=args.link))
             
             elif '/master.mpd' in url:
              id =  url.split("/")[-2]
