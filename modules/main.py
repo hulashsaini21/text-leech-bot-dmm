@@ -181,8 +181,8 @@ async def account_login(bot: Client, m: Message):
 
             try:  
                 
-                cc = f'**[🎬] Vid_ID: {str(count).zfill(3)}.**\n**Video Title :** {𝗻𝗮𝗺𝗲𝟭}.mkv\n**Batch Name :** {raw_text0}\n\n**Extracted By ➤ {MR}**'
-                cc1 = f'**[📕] Pdf_ID: {str(count).zfill(3)}.**\n**Pdf Title :** {𝗻𝗮𝗺𝗲𝟭}.pdf \n**Batch Name :** {raw_text0}\n\n**Extracted By ➤ {MR}**'
+                cc = f'**[🎬] Vid_ID : {str(count).zfill(3)}**\n\n**Video Title :** {𝗻𝗮𝗺𝗲𝟭}.mkv\n\n**Batch Name :** {raw_text0}\n\n**Extracted By ➤ {MR}**'
+                cc1 = f'**[📕] Pdf_ID : {str(count).zfill(3)}**\n\n**Pdf Title :** {𝗻𝗮𝗺𝗲𝟭}.pdf \n\n**Batch Name :** {raw_text0}\n\n**Extracted By ➤ {MR}**'
                 if "drive" in url:
                     try:
                         ka = await helper.download(url, name)
@@ -225,7 +225,7 @@ async def account_login(bot: Client, m: Message):
 
     except Exception as e:
         await m.reply_text(e)
-    await m.reply_text("✅ 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥𝐥𝐲 𝐃𝐨𝐧𝐞")
+    await m.reply_text("𝐃𝐨𝐧𝐞 ✅")
 
 async def main():
     if WEBHOOK:
