@@ -5,7 +5,7 @@ idna
 mutagen
 pyaes
 pycryptodome
-pyrogram==1.5
+pyrogram
 pyromod
 PySocks
 python-dotenv
