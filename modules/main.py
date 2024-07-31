@@ -161,6 +161,19 @@ async def account_login(bot: Client, m: Message):
 
             elif 'videos.classplusapp' in url:
              url = requests.get(f'https://api.classplusapp.com/cams/uploader/video/jw-signed-url?url={url}', headers={'x-access-token': 'eyJjb3Vyc2VJZCI6IjQ1NjY4NyIsInR1dG9ySWQiOm51bGwsIm9yZ0lkIjo0ODA2MTksImNhdGVnb3J5SWQiOm51bGx9'}).json()['url']
+
+            elif 'allenplus.allen.ac.in/api/v1' in url:
+              out=subprocess.getoutput(f"yt-dlp {url} --dump-json --skip-download").replace("WARNING: [generic] Falling back on generic information extractor","").strip()
+              out=json.loads(out)
+              try:
+                url=out['url']
+              except KeyError:
+                v=out["formats"]
+                v=list(filter(lambda x:x["protocol"]=="m3u8_native", v))
+                v=list(filter(lambda x:"hls-fastly_skyfire_sep" in x["format_id"], v))[0]
+                u=v["manifest_url"]
+                url=u.split("video/")[1].split("/")[0]
+                url=u.replace(url, url.split(",")[-2])
             
             elif '/master.mpd' in url:
              id =  url.split("/")[-2]
