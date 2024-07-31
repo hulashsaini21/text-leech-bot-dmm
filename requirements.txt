@@ -21,3 +21,5 @@ aiofiles
 pytz
 umongo
 speedtest-cli
+ffmpeg
+ffprobe
