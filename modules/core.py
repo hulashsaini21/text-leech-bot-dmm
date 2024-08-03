@@ -15,7 +15,9 @@ from utils import progress_bar
 from pyrogram import Client, filters
 from pyrogram.types import Message
 
-
+# pw_token = os.environ.get("token")
+pw_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjIxMzM4MzkuOTM2LCJkYXRhIjp7Il9pZCI6IjYyYTYwYWM0MWEzMDk3MDAxMTMyMmZjOCIsInVzZXJuYW1lIjoiODI3MjA1NTA1NCIsImZpcnN0TmFtZSI6IlVOSVFVRSIsImxhc3ROYW1lIjoiVU5JUVVFIiwib3JnYW5pemF0aW9uIjp7Il9pZCI6IjVlYjM5M2VlOTVmYWI3NDY4YTc5ZDE4OSIsIndlYnNpdGUiOiJwaHlzaWNzd2FsbGFoLmNvbSIsIm5hbWUiOiJQaHlzaWNzd2FsbGFoIn0sImVtYWlsIjoibXVqZWVtMDAwQGdtYWlsLmNvbSIsInJvbGVzIjpbIjViMjdiZDk2NTg0MmY5NTBhNzc4YzZlZiJdLCJjb3VudHJ5R3JvdXAiOiJJTiIsInR5cGUiOiJVU0VSIn0sImlhdCI6MTcyMTUyOTAzOX0.SnzidAv5BzTeecU5MjrexdpEgZHMIgaQY49VcdblJQY"
+#pw_token = "9550bce0978b3f1354cf0b4b0ad81afaf2e1283d372f8aa87749854701a12da6"
 
 def duration(filename):
     result = subprocess.run([
@@ -125,7 +127,180 @@ async def download_video(url, cmd, name):
     except FileNotFoundError as exc:
         return os.path.isfile.splitext[0] + "." + "mp4"
 
+async def get_pssh_kid(mpd_url: str, headers: dict = {}, cookies: dict = {}):
+    """
+    Get pssh, kid from mpd url
+    headers: Headers if needed
+    """
+    pssh = ""
+    kid = ""
+    for i in range(3):
+        try:
+            async with httpx.AsyncClient() as client:
+                res = await client.get(mpd_url, headers=headers, cookies=cookies)
+                mpd_res = res.text
+        except Exception as e:
+            print("Error fetching MPD:", e)
+            continue
+        try:
+            matches = re.finditer("<cenc:pssh>(.*)</cenc:pssh>", mpd_res)
+            pssh = next(matches).group(1)
+            kid = re.findall(r'default_KID="([\S]+)"', mpd_res)[0].replace("-", "")
+        except Exception as e:
+            print("Error extracting PSSH or KID:", e)
+            continue
+        else:
+            break
+    return pssh, kid
 
+
+class Penpencil:
+    otp_url = "https://api.penpencil.co/v1/videos/get-otp?key="
+    penpencil_bearer = f'{pw_token}'
+
+    headers = {
+        "Host": "api.penpencil.co",
+        "content-type": "application/json",
+        "authorization": f"Bearer {pw_token}",
+        "client-version": "11",
+        "user-agent": "Mozilla/5.0 (Linux; Android 10; PACM00) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.98 Mobile Safari/537.36",
+        "Client-Type": "WEB",
+        "accept-encoding": "gzip",
+    }
+
+    @classmethod
+    def encode_utf16_hex(cls, input_string: str) -> str:
+        hex_string = ''.join(f"{ord(char):04x}" for char in input_string)
+        return hex_string
+
+    @classmethod
+    def get_otp_key(cls, kid: str):
+        xor_bytes = bytes(
+            [
+                ord(kid[i]) ^ ord(cls.penpencil_bearer[i % len(cls.penpencil_bearer)])
+                for i in range(len(kid))
+            ]
+        )
+        f = base64.b64encode(xor_bytes).decode("utf-8")
+        print(f"Generated OTP Key: {f}")
+        return f
+
+    @classmethod
+    def get_key(cls, otp: str):
+        a = base64.b64decode(otp)
+        b = len(a)
+        c = [int(a[i]) for i in range(b)]
+        d = "".join(
+            [
+                chr(c[j] ^ ord(cls.penpencil_bearer[j % len(cls.penpencil_bearer)]))
+                for j in range(b)
+            ]
+        )
+        print(f"Decoded Key: {d}")
+        return d
+
+    @classmethod
+    async def get_keys(cls, kid: str):
+        otp_key = cls.get_otp_key(kid)
+        encoded_hex = cls.encode_utf16_hex(otp_key)
+        print(f"Encoded Hex: {encoded_hex}")
+
+        keys = []
+        for i in range(3):
+            try:
+                async with httpx.AsyncClient(headers=cls.headers) as client:
+                    otp_url = f"{cls.otp_url}{encoded_hex}&isEncoded=true"
+                    resp = await client.get(otp_url)
+                    otp_dict = resp.json()
+            except Exception as e:
+                print("Error fetching OTP:", e)
+                continue
+            try:
+                otp = otp_dict["data"]["otp"]
+                print(f"Received OTP: {otp}")
+                key = cls.get_key(otp)
+                keys = f"{kid}:{key}"
+            except Exception as e:
+                print("Error extracting key:", e)
+                continue
+            else:
+                break
+        return keys
+
+    @classmethod
+    async def get_mpd_title(cls, url: str):
+        return url
+
+    @classmethod
+    async def get_mpd_keys_title(cls, url: str, keys: list = []):
+        mpd_url = await cls.get_mpd_title(url)
+        if keys:
+            return mpd_url
+        if mpd_url:
+            pssh, kid = await get_pssh_kid(mpd_url)
+            print("PSSH:", pssh)
+            print("KID:", kid)
+
+            # keys = await cls.get_keys(kid)
+            # print("Keys:", keys)
+
+            key = await cls.get_keys(kid)
+            print("Key:", key)
+        return mpd_url, key
+
+async def get_drm_keys(url: str):
+    mpd_url, key = await Penpencil.get_mpd_keys_title(url)
+    return key
+
+async def drm_download_video(url, quality, name, keys):
+
+    print(keys)
+    keys = keys.split(":")
+    if len(keys) != 2:
+        print("Error: Two keys must be provided separated by a colon.")
+        return None
+    key1, key2 = keys
+
+
+    if quality =="1":
+        nqual="720"
+
+    elif quality=="2":
+        nqual= "480" 
+
+    elif quality =="3":
+        nqual="360"
+
+    elif quality=="4":
+        nqual="240"
+    else :
+        nqual="480"                
+  
+    try:
+        # Get the directory of the current script
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Path to N_m3u8DL-RE
+        n_m3u8dl_re_path = os.path.join(current_dir, "N_m3u8DL-RE.exe")
+
+
+        # Use N_m3u8DL-RE for decryption
+        nurl = url.replace("master",f"master_{nqual}")
+        subprocess.run([n_m3u8dl_re_path, "--auto-select", "--key", f"{key1}:{key2}", nurl, "-mt", "-M", "format=mp4", "--save-name", name], check=True)
+
+        # Verify download
+        result = os.system(f'ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "{name}.mp4"')
+        if result != 0:
+            print("Verification of the downloaded video failed.")
+            return None
+
+        print(f"Decryption and download successful with key {key1}.")
+        return f"{name}.mp4"
+
+    except FileNotFoundError as exc:
+        print(f"File not found: {exc}")
+        return os.path.splitext(name)[0] + ".mp4", None
+        
 async def send_doc(bot: Client, m: Message,cc,ka,cc1,prog,count,name):
     reply = await m.reply_text(f"Uploading » `{name}`")
     time.sleep(1)
