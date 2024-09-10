@@ -9,7 +9,12 @@ import requests
 import tgcrypto
 import subprocess
 import concurrent.futures
-
+import os
+import mmap
+Import base64
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from base64 import urlsafe_b64encode, urlsafe_b64decode
 from utils import progress_bar
 
 from pyrogram import Client, filters
@@ -126,6 +131,33 @@ async def download_video(url, cmd, name):
         return name
     except FileNotFoundError as exc:
         return os.path.isfile.splitext[0] + "." + "mp4"
+
+async def decrypt_file(file_path, key):
+    file_path = "result"
+    if not os.path.exists(file_path):
+     return False
+    with open(file_path, "r+b") as f:
+      num_bytes = min(28, os.path.getsize(file_path))
+      with mmap.mmap(f.fileno(), length=num_bytes, access=mmap.ACCESS_WRITE) as mmapped_file:
+          for i in range(num_bytes):
+              mmapped_file[i] ^= ord(key[i]) if i < len(key) else i
+      return True
+
+async def xor_encrypt_to_base64(input_str, key="123456"):
+    key_len = len(key)
+    encrypted_bytes = [
+        ord(char) ^ ord(key[i % key_len]) for i, char in enumerate(input_str)
+    ]
+    base64_encrypted = base64.b64encode(bytes(encrypted_bytes))
+    return base64_encrypted.decode('utf-8')
+
+# Example usage
+if __name__ == "__main__"
+input_str = "https://appx-transcoded-videos.livelearn.in/videos/gyanbindu-data/56271-1716481158/encrypted-49b9cb/360p/encrypted.mkv*123456"
+key = "8190096"
+## First download Link with Aria2c then decrypt it
+success = decrypt_file(key)
+print("Decryption successful:", success)
 
 async def get_pssh_kid(mpd_url: str, headers: dict = {}, cookies: dict = {}):
     """
