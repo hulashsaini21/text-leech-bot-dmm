@@ -150,7 +150,8 @@ async def xor_encrypt_to_base64(input_str, key="123456"):
     ]
     base64_encrypted = base64.b64encode(bytes(encrypted_bytes))
     return base64_encrypted.decode('utf-8')
-
+    success = decrypt_file(key)
+    print("Decryption successful:", success)
 
 async def get_pssh_kid(mpd_url: str, headers: dict = {}, cookies: dict = {}):
     """
