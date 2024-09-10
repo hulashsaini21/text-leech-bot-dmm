@@ -11,7 +11,7 @@ import subprocess
 import concurrent.futures
 import os
 import mmap
-Import base64
+import base64
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from base64 import urlsafe_b64encode, urlsafe_b64decode
