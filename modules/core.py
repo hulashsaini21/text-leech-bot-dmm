@@ -152,7 +152,7 @@ async def xor_encrypt_to_base64(input_str, key="123456"):
     return base64_encrypted.decode('utf-8')
 
 # Example usage
-if __name__ == "__main__"
+if appx-transcoded-videos-mcdn.akamai.net.in == "appx-transcoded-videos-mcdn.akamai.net.in"
 input_str = "https://appx-transcoded-videos.livelearn.in/videos/gyanbindu-data/56271-1716481158/encrypted-49b9cb/360p/encrypted.mkv*123456"
 key = "8190096"
 ## First download Link with Aria2c then decrypt it
