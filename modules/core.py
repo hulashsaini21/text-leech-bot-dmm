@@ -176,7 +176,7 @@ def init(self, name: str, resl: str, mpd: str):
         self.decrypted_audio = join(videos_dir, f"{decrypted_basename}.m4a")
         self.merged = join(videos_dir, f"{self.name} - {self.get_date()}.mkv")
 
-    async def process_video(self):
+async def process_video(self):
         key = await self.get_keys()
         if not key:
             LOGGER.error("Could not retrieve decryption keys.")
@@ -193,7 +193,7 @@ def init(self, name: str, resl: str, mpd: str):
         LOGGER.error(f"Processing failed for: {self.name}")
         return None
 
-    async def subprocess_call(self, cmd: Union[str, List[str]]):
+async def subprocess_call(self, cmd: Union[str, List[str]]):
         if isinstance(cmd, str):
             cmd = shlex.split(cmd)
         process = await asyncio.create_subprocess_exec(
@@ -207,7 +207,7 @@ def init(self, name: str, resl: str, mpd: str):
             return False
         return True
 
-    async def yt_dlp_drm(self) -> bool:
+async def yt_dlp_drm(self) -> bool:
         video_download = self.__subprocess_call(
             f'yt-dlp -k --allow-unplayable-formats -f "{self.vid_format}" --fixup never "{self.mpd_link}" --external-downloader aria2c --external-downloader-args "-x 16 -s 16 -k 1M" -o "{self.encrypted_video}"'
         )
@@ -216,7 +216,7 @@ def init(self, name: str, resl: str, mpd: str):
         )
         return await asyncio.gather(video_download, audio_download)
 
-    async def decrypt(self, key: str):
+async def decrypt(self, key: str):
         LOGGER.info("Decrypting...")
         video_decrypt = self.__subprocess_call(
             f'mp4decrypt --show-progress {key} "{self.encrypted_video}" "{self.decrypted_video}"'
@@ -226,13 +226,13 @@ def init(self, name: str, resl: str, mpd: str):
         )
         return await asyncio.gather(video_decrypt, audio_decrypt)
 
-    async def merge(self):
+async def merge(self):
         LOGGER.info("Merging...")
         return await self.__subprocess_call(
             f'ffmpeg -i "{self.decrypted_video}" -i "{self.decrypted_audio}" -c copy "{self.merged}"'
         )
 
-    async def cleanup_files(self):
+async def cleanup_files(self):
         for file_path in [
                 self.encrypted_video, self.encrypted_audio,
                 self.decrypted_audio, self.decrypted_video
