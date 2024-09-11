@@ -90,11 +90,7 @@ def old_download(url, file_name, chunk_size=1024 * 10):
 def init(self):
         self._remoteapi = "https://app.magmail.eu.org/get_keys"
 
-    #@staticmethod
-    def c_name(name: str) -> str:
-        for i in ["/", ":", "{", "}", "|"]:
-            name = name.replace(i, "_")
-        return name
+
 
     def get_date(self) -> str:
         tz = pytz.timezone('Asia/Kolkata')
