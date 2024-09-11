@@ -92,11 +92,6 @@ def init(self):
 
 
 
-    def get_date(self) -> str:
-        tz = pytz.timezone('Asia/Kolkata')
-        ct = datetime.datetime.now(tz)
-        return ct.strftime("%d %b %Y - %I:%M%p")
-
     async def get_keys(self):
         async with ClientSession(headers={"user-agent": "okhttp"}) as session:
             async with session.post(self._remoteapi,
