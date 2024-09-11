@@ -1,24 +1,23 @@
-import os
+import os, argparse
 import time
+import pytz
 import datetime
 import aiohttp
 import aiofiles
-import asyncio
+import asyncio, shlex
 import logging
 import requests
 import tgcrypto
 import subprocess
 import concurrent.futures
-import os
-import mmap
-import base64
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
-from base64 import urlsafe_b64encode, urlsafe_b64decode
 from utils import progress_bar
-
+from os.path import join
+from aiofiles.os import remove
+from aiohttp import ClientSession
+from typing import  Union, List
 from pyrogram import Client, filters
 from pyrogram.types import Message
+from logging import getLogger, FileHandler, StreamHandler, INFO, basicConfig
 
 # pw_token = os.environ.get("token")
 pw_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjIxMzM4MzkuOTM2LCJkYXRhIjp7Il9pZCI6IjYyYTYwYWM0MWEzMDk3MDAxMTMyMmZjOCIsInVzZXJuYW1lIjoiODI3MjA1NTA1NCIsImZpcnN0TmFtZSI6IlVOSVFVRSIsImxhc3ROYW1lIjoiVU5JUVVFIiwib3JnYW5pemF0aW9uIjp7Il9pZCI6IjVlYjM5M2VlOTVmYWI3NDY4YTc5ZDE4OSIsIndlYnNpdGUiOiJwaHlzaWNzd2FsbGFoLmNvbSIsIm5hbWUiOiJQaHlzaWNzd2FsbGFoIn0sImVtYWlsIjoibXVqZWVtMDAwQGdtYWlsLmNvbSIsInJvbGVzIjpbIjViMjdiZDk2NTg0MmY5NTBhNzc4YzZlZiJdLCJjb3VudHJ5R3JvdXAiOiJJTiIsInR5cGUiOiJVU0VSIn0sImlhdCI6MTcyMTUyOTAzOX0.SnzidAv5BzTeecU5MjrexdpEgZHMIgaQY49VcdblJQY"
@@ -88,6 +87,32 @@ def old_download(url, file_name, chunk_size=1024 * 10):
                 fd.write(chunk)
     return file_name
 
+def init(self):
+        self._remoteapi = "https://app.magmail.eu.org/get_keys"
+
+    @staticmethod
+    def c_name(name: str) -> str:
+        for i in ["/", ":", "{", "}", "|"]:
+            name = name.replace(i, "_")
+        return name
+
+    def get_date(self) -> str:
+        tz = pytz.timezone('Asia/Kolkata')
+        ct = datetime.datetime.now(tz)
+        return ct.strftime("%d %b %Y - %I:%M%p")
+
+    async def get_keys(self):
+        async with ClientSession(headers={"user-agent": "okhttp"}) as session:
+            async with session.post(self._remoteapi,
+                                    json={"link": self.mpd_link}) as resp:
+                if resp.status != 200:
+                    LOGGER.error(f"Invalid request: {await resp.text()}")
+                    return None
+                response = await resp.json(content_type=None)
+        self.mpd_link = response["MPD"]
+        return response["KEY_STRING"]
+
+
 
 def human_readable_size(size, decimal_places=2):
     for unit in ['B', 'KB', 'MB', 'GB', 'TB', 'PB']:
@@ -131,6 +156,93 @@ async def download_video(url, cmd, name):
         return name
     except FileNotFoundError as exc:
         return os.path.isfile.splitext[0] + "." + "mp4"
+
+def init(self, name: str, resl: str, mpd: str):
+        super().__init__()
+        self.mpd_link = mpd
+        self.name = self.c_name(name)
+        self.vid_format = f'bestvideo.{resl}/bestvideo.2/bestvideo'
+
+        videos_dir = "Videos"
+        encrypted_basename = f"{self.name}_enc"
+        decrypted_basename = f"{self.name}_dec"
+
+        self.encrypted_video = join(videos_dir, f"{encrypted_basename}.mp4")
+        self.encrypted_audio = join(videos_dir, f"{encrypted_basename}.m4a")
+        self.decrypted_video = join(videos_dir, f"{decrypted_basename}.mp4")
+        self.decrypted_audio = join(videos_dir, f"{decrypted_basename}.m4a")
+        self.merged = join(videos_dir, f"{self.name} - {self.get_date()}.mkv")
+
+    async def process_video(self):
+        key = await self.get_keys()
+        if not key:
+            LOGGER.error("Could not retrieve decryption keys.")
+            return
+        LOGGER.info(f"MPD: {self.mpd_link}")
+        LOGGER.info(f"Got the Keys > {key}")
+        LOGGER.info(f"Downloading Started...")
+        if await self.__yt_dlp_drm() and await self.__decrypt(
+                key) and await self.__merge():
+            LOGGER.info(f"Cleaning up files for: {self.name}")
+            await self.__cleanup_files()
+            LOGGER.info(f"Downloading complete for: {self.name}")
+            return self.merged
+        LOGGER.error(f"Processing failed for: {self.name}")
+        return None
+
+    async def subprocess_call(self, cmd: Union[str, List[str]]):
+        if isinstance(cmd, str):
+            cmd = shlex.split(cmd)
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE)
+        stdout, stderr = await process.communicate()
+        if process.returncode != 0:
+            LOGGER.error(
+                f"Command failed: {' '.join(cmd)}\nError: {stderr.decode()}")
+            return False
+        return True
+
+    async def yt_dlp_drm(self) -> bool:
+        video_download = self.__subprocess_call(
+            f'yt-dlp -k --allow-unplayable-formats -f "{self.vid_format}" --fixup never "{self.mpd_link}" --external-downloader aria2c --external-downloader-args "-x 16 -s 16 -k 1M" -o "{self.encrypted_video}"'
+        )
+        audio_download = self.__subprocess_call(
+            f'yt-dlp -k --allow-unplayable-formats -f ba --fixup never "{self.mpd_link}" --external-downloader aria2c --external-downloader-args "-x 16 -s 16 -k 1M" -o "{self.encrypted_audio}"'
+        )
+        return await asyncio.gather(video_download, audio_download)
+
+    async def decrypt(self, key: str):
+        LOGGER.info("Decrypting...")
+        video_decrypt = self.__subprocess_call(
+            f'mp4decrypt --show-progress {key} "{self.encrypted_video}" "{self.decrypted_video}"'
+        )
+        audio_decrypt = self.__subprocess_call(
+            f'mp4decrypt --show-progress {key} "{self.encrypted_audio}" "{self.decrypted_audio}"'
+        )
+        return await asyncio.gather(video_decrypt, audio_decrypt)
+
+    async def merge(self):
+        LOGGER.info("Merging...")
+        return await self.__subprocess_call(
+            f'ffmpeg -i "{self.decrypted_video}" -i "{self.decrypted_audio}" -c copy "{self.merged}"'
+        )
+
+    async def cleanup_files(self):
+        for file_path in [
+                self.encrypted_video, self.encrypted_audio,
+                self.decrypted_audio, self.decrypted_video
+        ]:
+            try:
+                await remove(file_path)
+            except Exception as e:
+                LOGGER.warning(f"Failed to delete {file_path}: {str(e)}")
+
+
+async def main(name, resl, mpd):
+    downloader = Download(name, resl, mpd)
+    await downloader.process_video()
 
 async def decrypt_file(file_path, key):
     file_path = "result"
