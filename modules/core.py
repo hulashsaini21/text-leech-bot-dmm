@@ -90,12 +90,24 @@ def old_download(url, file_name, chunk_size=1024 * 10):
 def init(self):
         self._remoteapi = "https://app.magmail.eu.org/get_keys"
 
+def __init__(self):
+        self._remoteapi = "https://app.magmail.eu.org/get_keys"
 
+#@staticmethod
+def c_name(name: str) -> str:
+    for i in ["/", ":", "{", "}", "|"]:
+        name = name.replace(i, "_")
+        return name
 
-    async def get_keys(self):
-        async with ClientSession(headers={"user-agent": "okhttp"}) as session:
-            async with session.post(self._remoteapi,
-                                    json={"link": self.mpd_link}) as resp:
+def get_date(self) -> str:
+        tz = pytz.timezone('Asia/Kolkata')
+        ct = datetime.datetime.now(tz)
+        return ct.strftime("%d %b %Y - %I:%M%p")
+
+async def get_keys(self):
+    async with ClientSession(headers={"user-agent": "okhttp"}) as session:
+        async with session.post(self._remoteapi,
+                                json={"link": self.mpd_link}) as resp:
                 if resp.status != 200:
                     LOGGER.error(f"Invalid request: {await resp.text()}")
                     return None
