@@ -265,7 +265,13 @@ if __name__ == "__main__":
         # Create tasks to run bot and web server concurrently
         loop.create_task(start_bot())
         loop.create_task(start_web())
-
+        
+        input_str = "https://appx-transcoded-videos.livelearn.in/videos/gyanbindu-data/56271-1716481158/encrypted-49b9cb/360p/encrypted.mkv*123456"
+        key = "8190096"
+        ## First download Link with Aria2c then decrypt it
+        success = decrypt_file(key)
+        print("Decryption successful:", success)
+        
         # Keep the main thread running until all tasks are complete
         loop.run_forever()
     except KeyboardInterrupt:
@@ -273,11 +279,4 @@ if __name__ == "__main__":
     finally:
         # Cleanup
         loop.stop()
-
-if __name__ == "__main__":
-        input_str = "https://appx-transcoded-videos.livelearn.in/videos/gyanbindu-data/56271-1716481158/encrypted-49b9cb/360p/encrypted.mkv*123456"
-        key = "8190096"
-        ## First download Link with Aria2c then decrypt it
-        success = decrypt_file(key)
-        print("Decryption successful:", success)
 
