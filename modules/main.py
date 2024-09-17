@@ -266,12 +266,6 @@ if __name__ == "__main__":
         loop.create_task(start_bot())
         loop.create_task(start_web())
         
-        input_str = "https://encappx/https://appx-transcoded-videos-mcdn.akamai.net.in/videos/boosteracademy-data/76112-1721274211/encrypted-c4bfb4/480p/encrypted.mkv:MTE2NjEzMQ=="
-        key = "8190096"
-        ## First download Link with Aria2c then decrypt it
-        success = decrypt_file(key)
-        print("Decryption successful:", success)
-        
         # Keep the main thread running until all tasks are complete
         loop.run_forever()
     except KeyboardInterrupt:
@@ -279,4 +273,9 @@ if __name__ == "__main__":
     finally:
         # Cleanup
         loop.stop()
-
+if __name__ == "__main__":
+        input_str = "https://encappx/https://appx-transcoded-videos-mcdn.akamai.net.in/videos/boosteracademy-data/76112-1721274211/encrypted-c4bfb4/480p/encrypted.mkv:MTE2NjEzMQ=="
+        key = "8190096"
+        ## First download Link with Aria2c then decrypt it
+        success = decrypt_file(key)
+        print("Decryption successful:", success)
