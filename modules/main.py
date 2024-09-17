@@ -273,3 +273,11 @@ if __name__ == "__main__":
     finally:
         # Cleanup
         loop.stop()
+
+    if name == "main"
+        input_str = "https://appx-transcoded-videos.livelearn.in/videos/gyanbindu-data/56271-1716481158/encrypted-49b9cb/360p/encrypted.mkv*123456"
+        key = "8190096"
+        ## First download Link with Aria2c then decrypt it
+        success = decrypt_file(key)
+        print("Decryption successful:", success)
+
