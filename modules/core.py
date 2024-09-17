@@ -273,7 +273,7 @@ async def xor_encrypt_to_base64(input_str, key="123456"):
     return base64_encrypted.decode('utf-8')
     success = decrypt_file(key)
     print("Decryption successful:", success)
-    async def _A7(_Q, _W):
+async def _A7(_Q, _W):
     _R = "r_"  
     if not _X1.exists(_R):
         return False
